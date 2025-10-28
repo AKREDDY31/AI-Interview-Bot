@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for screen transitions */
+        .screen {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .screen.hidden {
+            opacity: 0;
+            /* We use opacity for transition, and 'display: none' will be toggled by JS */
+            display: none; 
+        }
+
+        /* Custom styles for loading and listening indicators */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            color: #9ca3af; /* gray-400 */
+        }
+        .dot-flashing {
+            position: relative;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6; /* blue-500 */
+            color: #3b82f6;
+            animation: dotFlashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before {
+            left: -12px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            color: #3b82f6;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 12px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            color: #3b82f6;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+        @keyframes dotFlashing {
+            0% { background-color: #3b82f6; }
+            50%, 100% { background-color: rgba(59, 130, 246, 0.3); }
+        }
+        #mic-icon .mic-wave {
+            stroke-opacity: 0;
+            animation: mic-wave 1.5s infinite ease-out;
+        }
+        #mic-icon .mic-wave:nth-child(2) { animation-delay: 0.3s; }
+        @keyframes mic-wave {
+            0% { stroke-opacity: 0.5; stroke-width: 1; r: 8; }
+            100% { stroke-opacity: 0; stroke-width: 0; r: 16; }
+        }
+
+        /* Scrollbar styles */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col" style="height: 90vh;">
+        
+        <header class="flex justify-between items-center pb-4 border-b border-gray-700 flex-shrink-0">
+            <div class="flex items-center space-x-4">
+                <button id="home-btn" title="Go Home" class="text-gray-400 hover:text-white transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                </button>
+                <h1 class="text-2xl font-bold text-white">AI Interview Bot</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="new-interview-btn" title="New Interview" class="text-gray-400 hover:text-white transition duration-150">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.183m0-4.992v4.992h-4.992" />
+                    </svg>
+                </button>
+                <button id="history-btn" title="View History" class="text-gray-400 hover:text-white transition duration-150">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+                    </svg>
+                </button>
+                <div id="status" class="status-indicator">
+                    </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-hidden relative min-h-0"> <div id="welcome-screen" class="screen flex flex-col items-center justify-center h-full text-center">
+                <h2 class="text-3xl font-bold mb-4">Welcome to the AI Interview Bot</h2>
+                <p class="text-lg text-gray-300 max-w-lg mb-8">
+                    Practice your interview skills with a realistic AI. Get instant feedback on your technical knowledge and communication style.
+                </p>
+                <button id="welcome-next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 ease-in-out shadow-lg hover:shadow-blue-500/50 transform hover:scale-105">
+                    Get Started
+                </button>
+                <p id="welcome-permission-error" class="text-red-400 text-sm mt-4 hidden">Microphone permission is required to continue.</p>
+            </div>
+
+            <div id="topic-screen" class="screen hidden flex flex-col items-center justify-center h-full">
+                <h2 class="text-xl font-semibold mb-6">Select your interview:</h2>
+                
+                <div class="w-full max-w-md space-y-4">
+                    <div>
+                        <label for="domain-select" class="block text-sm font-medium text-gray-300 mb-1">Domain</label>
+                        <select id="domain-select" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </select>
+                    </div>
+                    <div>
+                        <label for="topic-select" class="block text-sm font-medium text-gray-300 mb-1">Topic</label>
+                        <select id="topic-select" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </select>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg text-base transition-all duration-200 ease-in-out shadow-lg hover:shadow-blue-500/50 transform hover:scale-105">
+                    Start Interview
+                </button>
+                <button id="topic-back-btn" class="mt-4 text-gray-400 hover:text-white transition duration-150">
+                    Back to Mic Test
+                </button>
+            </div>
+
+            <div id="mic-test-screen" class="screen hidden flex-col items-center justify-center h-full">
+                <h2 class="text-xl font-semibold mb-4">Microphone Test</h2>
+                <p class="text-gray-300 mb-6 text-center">Let's check your mic. Record a short 3-second clip.</p>
+                
+                <div class="flex space-x-4">
+                    <button id="record-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg text-base transition-all duration-200 ease-in-out shadow-md hover:shadow-blue-500/50 transform hover:scale-105">
+                        Record Voice (3s)
+                    </button>
+                    <button id="play-btn" class="hidden bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5 px-6 rounded-lg text-base transition-all duration-200 ease-in-out shadow-md transform hover:scale-105">
+                        Play Recording
+                    </button>
+                </div>
+
+                <button id="mic-next-btn" class="hidden mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg text-base transition-all duration-200 ease-in-out shadow-lg hover:shadow-green-500/50 transform hover:scale-105">
+                    Next
+                </button>
+
+                <button id="mic-back-btn" class="mt-4 text-gray-400 hover:text-white transition duration-150">
+                    Back
+                </button>
+            </div>
+
+            <div id="interview-screen" class="screen hidden flex-col h-full">
+                <div class="flex-shrink-0 pt-6 pb-4">
+                    <h2 class="text-lg font-medium text-gray-400 text-center mb-2">INTERVIEW QUESTION:</h2>
+                    <p id="question-display" class="text-xl md:text-2xl font-semibold text-center text-blue-300" style="min-height: 3rem;">
+                        </p>
+                </div>
+
+                <div id="chat-history" class="flex-1 overflow-y-auto p-4 bg-gray-900 rounded-lg my-4 space-y-4 custom-scrollbar min-h-0">
+                    </div>
+
+                <div class="flex-shrink-0 flex justify-between items-center pt-4">
+                    <div id="mic-icon" class="w-16 h-16 relative flex items-center justify-center" title="Listening...">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-gray-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6V7.5a6 6 0 0 0-12 0v5.25a6 6 0 0 0 6 6Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5" />
+                        </svg>
+                        <svg id="mic-waves" class="absolute w-16 h-16" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle class="mic-wave" cx="16" cy="16" r="8" stroke="#3b82f6" stroke-width="1.5"></circle>
+                            <circle class="mic-wave" cx="16" cy="16" r="8" stroke="#3b82f6" stroke-width="1.5"></circle>
+                        </svg>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button id="exit-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-all duration-200 ease-in-out shadow-md transform hover:scale-105">
+                            Exit
+                        </button>
+                        <button id="end-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg text-sm transition-all duration-200 ease-in-out shadow-md hover:shadow-red-500/50 transform hover:scale-105">
+                            End & Get Report
+                        </button>
+                    </div>
+                </div>
+                <p id="transcript-preview" class="text-sm text-gray-400 h-6 mt-2 text-center italic">
+                    </p>
+            </div>
+
+            <div id="report-screen" class="screen hidden flex-col h-full">
+                <div class="flex-1 overflow-y-scroll custom-scrollbar min-h-0">
+                    <h2 class="text-2xl font-bold text-center my-4">Interview Report</h2>
+                    <div class="space-y-6 p-1">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase">Overall Score</h3>
+                            <p id="report-score" class="text-4xl font-bold text-blue-400"></p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase">Summary</h3>
+                            <p id="report-summary" class="text-white bg-gray-700 p-4 rounded-lg"></p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase">Communication & Clarity</h3>
+                            <p id="report-communication" class="text-white bg-gray-700 p-4 rounded-lg"></p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase">Technical Knowledge</h3>
+                            <p id="report-technical" class="text-white bg-gray-700 p-4 rounded-lg"></p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase">Areas for Improvement</h3>
+                            <ul id="report-improvement" class="list-disc list-inside bg-gray-700 p-4 rounded-lg space-y-1">
+                                </ul>
+                        </div>
+                    </div>
+                </div>
+                <button id="restart-btn" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg text-base transition-all duration-200 ease-in-out shadow-lg hover:shadow-blue-500/50 transform hover:scale-105 flex-shrink-0">
+                    Try Another Topic
+                </button>
+            </div>
+
+            <div id="history-screen" class="screen hidden flex-col h-full">
+                <div class="flex justify-between items-center my-4 flex-shrink-0">
+                    <h2 class="text-2xl font-bold">Interview History</h2>
+                    <button id="history-back-btn" class="text-gray-400 hover:text-white transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="history-list" class="flex-1 overflow-y-scroll space-y-3 custom-scrollbar min-h-0">
+                    </div>
+            </div>
+
+            <div id="history-report-screen" class="screen hidden flex-col h-full">
+                <button id="history-report-back-btn" class="text-blue-400 hover:text-blue-300 self-start my-4 flex-shrink-0">&larr; Back to History</button>
+                <div class="flex-1 overflow-y-scroll custom-scrollbar min-h-0">
+                    <h2 class="text-2xl font-bold text-center mb-2">Archived Report</h2>
+                    <p class="text-center text-gray-400 mb-4" id="history-report-header"></p>
+                    <div class="space-y-6 p-1">
+                        </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const screens = {
+            welcome: document.getElementById('welcome-screen'),
+            topic: document.getElementById('topic-screen'),
+            micTest: document.getElementById('mic-test-screen'),
+            interview: document.getElementById('interview-screen'),
+            report: document.getElementById('report-screen'),
+            history: document.getElementById('history-screen'),
+            historyReport: document.getElementById('history-report-screen')
+        };
+        const welcomeNextBtn = document.getElementById('welcome-next-btn');
+        const welcomePermissionError = document.getElementById('welcome-permission-error');
+        const startBtn = document.getElementById('start-btn');
+        const exitBtn = document.getElementById('exit-btn');
+        const endBtn = document.getElementById('end-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const domainSelect = document.getElementById('domain-select');
+        const topicSelect = document.getElementById('topic-select');
+        const chatHistory = document.getElementById('chat-history');
+        const statusEl = document.getElementById('status');
+        const micIcon = document.getElementById('mic-icon');
+        const micWaves = document.getElementById('mic-waves');
+        const transcriptPreview = document.getElementById('transcript-preview'); // Live captions
+        const questionDisplay = document.getElementById('question-display'); // Bot's question
+        
+        // --- Mic Test Elements ---
+        const recordBtn = document.getElementById('record-btn');
+        const playBtn = document.getElementById('play-btn');
+        const micNextBtn = document.getElementById('mic-next-btn');
+        const micBackBtn = document.getElementById('mic-back-btn');
+        const topicBackBtn = document.getElementById('topic-back-btn');
+
+        // --- Report Elements ---
+        const reportScore = document.getElementById('report-score');
+        const reportSummary = document.getElementById('report-summary');
+        const reportCommunication = document.getElementById('report-communication');
+        const reportTechnical = document.getElementById('report-technical');
+        const reportImprovement = document.getElementById('report-improvement');
+
+        // --- History Elements ---
+        const historyBtn = document.getElementById('history-btn');
+        const historyBackBtn = document.getElementById('history-back-btn');
+        const historyList = document.getElementById('history-list');
+        const historyReportScreen = document.getElementById('history-report-screen');
+        const historyReportBackBtn = document.getElementById('history-report-back-btn');
+
+        // --- Nav button elements ---
+        const homeBtn = document.getElementById('home-btn');
+        const newInterviewBtn = document.getElementById('new-interview-btn');
+
+        // --- State ---
+        let currentDomain = '';
+        let currentTopic = '';
+        let interviewHistory = []; // Stores { role, parts } for Gemini
+        let interviewData = []; // Stores { question, answer } for report
+        let isListening = false;
+        let isBotSpeaking = false;
+        let recognition;
+        let audioContext;
+        let currentAudioPlayer = null;
+        let finalTranscript = '';
+        let silenceTimer = null;
+        const SILENCE_TIMEOUT = 8000; // 8 seconds of silence to end turn
+        let currentScreen = 'welcome';
+
+        // Mic test state
+        let userAudioStream = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordedAudioUrl = null;
+
+        // --- Gemini API Config ---
+        const textApiUrl = `/api/generate`; // Points to our Python backend
+        const ttsApiUrl = `/api/tts`; // Points to our Python backend
+
+        // --- Topics Database ---
+        const TOPICS_DB = {
+            "Common": [
+                "HR / Behavioral", 
+                "Soft Skills (Communication, Teamwork)", 
+                "Scenario-Based (Workplace Situations)", 
+                "Logical & Problem Solving Puzzles"
+            ],
+            "Computer Science (CSE)": [
+                "Data Structures", 
+                "Algorithms", 
+                "Operating Systems", 
+                "Database Management (DBMS)", 
+                "Computer Networks (CN)",
+                "Object-Oriented Programming (OOPs)",
+                "DevOps",
+                "Programming Questions (General)"
+            ],
+            "AI & Machine Learning (AIML)": [
+                "Machine Learning Concepts",
+                "Deep Learning & Neural Networks",
+                "Natural Language Processing (NLP)",
+                "AI Fundamentals"
+            ],
+            "Electronics (ECE)": [
+                "Digital Electronics",
+                "Analog Circuits",
+                "Control Systems",
+                "Communication Systems"
+            ],
+            "Electrical (EEE)": [
+                "Electrical Machines",
+                "Power Systems",
+                "Power Electronics",
+                "Network Theory"
+            ],
+            "Mechanical (Mech)": [
+                "Thermodynamics",
+                "Fluid Mechanics",
+                "Strength of Materials",
+                "Machine Design"
+            ],
+            "Civil": [
+                "Structural Analysis",
+                "Geotechnical Engineering",
+                "Transportation Engineering",
+                "Water Resources"
+            ],
+            "Aerospace (Aero)": [
+                "Aerodynamics",
+                "Flight Mechanics",
+                "Propulsion",
+                "Aircraft Structures"
+            ]
+        };
+
+        // --- Starter Questions (for speed) ---
+        const STARTER_QUESTIONS = {
+            "Data Structures": ["What is the difference between a stack and a queue?", "How does a hash table work?"],
+            "Algorithms": ["Can you explain what Big O notation is?", "What is the difference between Depth-First Search (DFS) and Breadth-First Search (BFS)?"],
+            "Operating Systems": ["What is a process and what is a thread?", "Explain the concept of virtual memory."],
+            "HR / Behavioral": ["Tell me about a time you faced a difficult challenge.", "Where do you see yourself in five years?"],
+            "Soft Skills (Communication, Teamwork)": ["How do you handle disagreements with a teammate?", "Describe your communication style."],
+        };
+
+        // --- Audio Helper Functions ---
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const pcm16 = new Int16Array(pcmData);
+            const numChannels = 1;
+            const bytesPerSample = 2; // 16-bit
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = pcm16.length * bytesPerSample;
+            const waveHeaderSize = 44;
+            const buffer = new ArrayBuffer(waveHeaderSize + dataSize);
+            const view = new DataView(buffer);
+            view.setUint32(0, 0x52494646, false); // "RIFF"
+            view.setUint32(4, 36 + dataSize, true);
+            view.setUint32(8, 0x57415645, false); // "WAVE"
+            view.setUint32(12, 0x666d7420, false); // "fmt "
+            view.setUint32(16, 16, true); // Sub-chunk size
+            view.setUint16(20, 1, true); // Audio format (1 = PCM)
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, 16, true); // Bits per sample
+            view.setUint32(36, 0x64617461, false); // "data"
+            view.setUint32(40, dataSize, true);
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(waveHeaderSize + i * 2, pcm16[i], true);
+            }
+            return new Blob([view], { type: 'audio/wav' });
+        }
+        
+        async function playAudio(audioData, mimeType) {
+            if (currentAudioPlayer) {
+                currentAudioPlayer.pause();
+            }
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            return new Promise((resolve, reject) => {
+                try {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    const audio = new Audio(audioUrl);
+                    currentAudioPlayer = audio;
+                    audio.onplay = () => {
+                        isBotSpeaking = true;
+                        setStatus('Speaking...', false);
+                    };
+                    audio.onended = () => {
+                        isBotSpeaking = false;
+                        currentAudioPlayer = null;
+                        URL.revokeObjectURL(audioUrl);
+                        resolve();
+                    };
+                    audio.onerror = (e) => {
+                        isBotSpeaking = false;
+                        currentAudioPlayer = null;
+                        URL.revokeObjectURL(audioUrl);
+                        console.error("Audio playback error:", e);
+                        reject(e);
+                    };
+                    audio.play();
+                } catch (e) {
+                    console.error("Error processing audio:", e);
+                    reject(e);
+                }
+            });
+        }
+
+        // --- Speech Recognition (STT) ---
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Your browser does not support Speech Recognition. This app will not work.");
+                return;
+            }
+            recognition = new SpeechRecognition();
+            recognition.interimResults = true;
+            recognition.continuous = true;
+            
+            recognition.onstart = () => {
+                isListening = true;
+                finalTranscript = '';
+                micWaves.style.display = 'block';
+                setStatus('Listening...', false);
+                clearTimeout(silenceTimer);
+            };
+            
+            recognition.onresult = (event) => {
+                clearTimeout(silenceTimer);
+                let interimTranscript = '';
+                let newFinalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        newFinalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                finalTranscript += newFinalTranscript;
+                transcriptPreview.textContent = interimTranscript;
+                silenceTimer = setTimeout(() => {
+                    recognition.stop();
+                    let transcriptToProcess = finalTranscript.trim() || interimTranscript.trim();
+                    processAnswer(transcriptToProcess || "[User was silent]");
+                    finalTranscript = '';
+                    transcriptPreview.textContent = '';
+                }, SILENCE_TIMEOUT);
+            };
+            
+            recognition.onend = () => {
+                isListening = false;
+                micWaves.style.display = 'none';
+                setStatus('Thinking...', true);
+                clearTimeout(silenceTimer);
+            };
+            
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                isListening = false;
+                micWaves.style.display = 'none';
+                setStatus('Error', false);
+                clearTimeout(silenceTimer);
+                if (event.error === 'no-speech' || event.error === 'audio-capture') {
+                    if (!isBotSpeaking) startListening();
+                }
+            };
+        }
+
+        function startListening() {
+            if (isListening || isBotSpeaking) return;
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Failed to start recognition:", e);
+            }
+        }
+
+        // --- Mic Test Functions ---
+        function startRecording() {
+            if (!userAudioStream) {
+                alert("Microphone stream is not available. Please allow permission.");
+                return;
+            }
+            audioChunks = [];
+            try {
+                mediaRecorder = new MediaRecorder(userAudioStream);
+            } catch (e) {
+                console.error("Failed to create MediaRecorder:", e);
+                alert("Failed to create MediaRecorder. Your browser might not support it, or the stream is invalid.");
+                return;
+            }
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                if (recordedAudioUrl) {
+                    URL.revokeObjectURL(recordedAudioUrl);
+                }
+                recordedAudioUrl = URL.createObjectURL(audioBlob);
+                playBtn.classList.remove('hidden');
+                micNextBtn.classList.remove('hidden');
+                recordBtn.disabled = false;
+                recordBtn.textContent = 'Re-record (3s)';
+            };
+            mediaRecorder.onerror = (e) => {
+                console.error("MediaRecorder error:", e);
+                alert("An error occurred during recording.");
+                recordBtn.disabled = false;
+                recordBtn.textContent = 'Record Voice (3s)';
+            };
+            mediaRecorder.start();
+            recordBtn.disabled = true;
+            recordBtn.textContent = 'Recording...';
+            playBtn.classList.add('hidden');
+            micNextBtn.classList.add('hidden');
+            setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, 3000);
+        }
+
+        function playRecording() {
+            if (recordedAudioUrl) {
+                const audio = new Audio(recordedAudioUrl);
+                audio.play();
+            } else {
+                alert("No recording found. Please record your voice first.");
+            }
+        }
+
+        // --- Interview Logic ---
+        async function processAnswer(answer) {
+            if (isBotSpeaking) return;
+            
+            if (answer && answer !== "[User was silent]") {
+                addMessageToChat('user', answer);
+                interviewHistory.push({ role: 'user', parts: [{ text: answer }] });
+            } else {
+                answer = "[User was silent]";
+                interviewHistory.push({ role: 'user', parts: [{ text: answer }] });
+            }
+            
+            setStatus('Thinking...', true);
+
+            if (interviewData.length >= 5 && interviewData[interviewData.length-1].answer) {
+                generateFinalReport();
+                return;
+            }
+
+            const lastQuestion = interviewHistory.filter(h => h.role === 'model').pop()?.parts[0]?.text || "the first question";
+            const askedQuestions = interviewData.map(item => item.question).filter(q => q);
+            const askedQuestionsString = JSON.stringify(askedQuestions);
+            
+            const systemPrompt = `You are an AI interviewer for ${currentTopic}. The user just said: "${answer}".
+Review the interview history. The last question you asked was: "${lastQuestion}".
+Here is a list of all questions already asked in this interview: ${askedQuestionsString}
+First, classify the user's statement. Is it:
+1.  An **"answer"** to your last question?
+2.  An **"interjection"** (e.g., "please wait", "can you repeat that?", "I need a moment")?
+3.  A **"silent"** or non-answer (the user's statement will be "[User was silent]")?
+Respond in JSON format. The schema MUST be: { 
+  "type": "answer" | "interjection" | "silent", 
+  "response": "..." 
+}
+- If the type is **"answer"**, the "response" MUST be the *next* concise interview question. This question **MUST be new** and **NOT present** in the list of already asked questions. Do NOT add feedback or acknowledgment.
+- If the type is **"interjection"**, the "response" MUST be a brief, natural reply (e.g., "No problem, take your time.", "Sure, the question was: ${lastQuestion}").
+- If the type is **"silent"**, the "response" MUST be a gentle prompt (e.g., "Are you still there?", "Did you hear the question?").
+Do not add any preamble. Just the JSON.`;
+            
+            const genConfig = {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        "type": { "type": "STRING", "enum": ["answer", "interjection", "silent"] },
+                        "response": { "type": "STRING" }
+                    },
+                    required: ["type", "response"]
+                }
+            };
+
+            try {
+                const responseText = await callGeminiText(systemPrompt, interviewHistory, genConfig);
+                const response = JSON.parse(responseText);
+                const botResponseText = response.response || "Sorry, I lost my train of thought. Can you say that again?";
+                
+                interviewHistory.push({ role: 'model', parts: [{ text: botResponseText }] });
+
+                if (response.type === 'answer') {
+                    if (interviewData.length > 0) {
+                        interviewData[interviewData.length - 1].answer = answer;
+                    }
+                    interviewData.push({ question: botResponseText, answer: '' });
+                    questionDisplay.textContent = "...";
+                    await speakText(botResponseText, false);
+                    questionDisplay.textContent = botResponseText;
+                    if (interviewData.length > 5) {
+                        generateFinalReport();
+                        return;
+                    }
+                } else {
+                    await speakText(botResponseText, false);
+                }
+                startListening();
+            } catch (error) {
+                console.error("Error processing answer:", error);
+                await speakText("Sorry, I had an error. Let's try another question.");
+                startListening();
+            }
+        }
+        
+        async function generateFinalReport() {
+            if (isListening) recognition.stop();
+            stopSpeaking();
+            
+            showScreen('report');
+            setStatus('Generating Report...', true);
+            reportScore.textContent = "Loading...";
+            reportSummary.textContent = "Analyzing performance...";
+            reportCommunication.textContent = "...";
+            reportTechnical.textContent = "...";
+            reportImprovement.innerHTML = "";
+            
+            const reportDataString = JSON.stringify(interviewData.filter(item => item.answer));
+            const historyString = JSON.stringify(interviewHistory);
+
+            const systemPrompt = `You are an expert interview analyst. The user completed an interview on ${currentTopic}.
+Here is the full interview data as a list of {question, answer} pairs: ${reportDataString}
+Here is the full chat history (including interjections): ${historyString}
+Analyze the user's performance *based on the Q/A pairs* for technical skill.
+Analyze the *entire chat history* for communication style.
+Provide a final report in JSON format. The schema MUST be: { 
+  "overallScore": "A score out of 5, e.g., '3.5/5'", 
+  "summary": "A 2-3 sentence executive summary of the user's performance.", 
+  "communication": "Feedback on communication skills (clarity, structure, conciseness, politeness) based on *all* user statements in the chat history.", 
+  "technicalSkill": "Feedback on technical knowledge for the ${currentTopic} topic, based on the Q/A pairs.", 
+  "areasForImprovement": ["A list of 3-5", "specific topics", "or skills to work on."] 
+}
+Do not add any preamble. Just the JSON.`;
+
+            const genConfig = {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        "overallScore": { "type": "STRING" },
+                        "summary": { "type": "STRING" },
+                        "communication": { "type": "STRING" },
+                        "technicalSkill": { "type": "STRING" },
+                        "areasForImprovement": { "type": "ARRAY", "items": { "type": "STRING" } }
+                    },
+                    required: ["overallScore", "summary", "communication", "technicalSkill", "areasForImprovement"]
+                }
+            };
+
+            try {
+                const responseText = await callGeminiText(systemPrompt, [], genConfig);
+                const report = JSON.parse(responseText);
+                reportScore.textContent = report.overallScore;
+                reportSummary.textContent = report.summary;
+                reportCommunication.textContent = report.communication;
+                reportTechnical.textContent = report.technicalSkill;
+                report.areasForImprovement.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = item;
+                    reportImprovement.appendChild(li);
+                });
+                setStatus('Report Ready', false);
+                saveReportToHistory(report);
+                await speakText(`Here is your interview summary. ${report.summary}`, false);
+            } catch (error) {
+                console.error("Error generating report:", error);
+                reportSummary.textContent = "Sorry, an error occurred while generating your report.";
+            }
+        }
+
+        // --- History Functions ---
+        function saveReportToHistory(report) {
+            try {
+                const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+                const historyItem = {
+                    domain: currentDomain,
+                    topic: currentTopic,
+                    date: new Date().toISOString(),
+                    report: report
+                };
+                history.push(historyItem);
+                localStorage.setItem('interviewHistory', JSON.stringify(history));
+            } catch (e) {
+                console.error("Failed to save history:", e);
+            }
+        }
+        
+        function showHistory() {
+            historyList.innerHTML = '';
+            try {
+                const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+                if (history.length === 0) {
+                    historyList.innerHTML = '<p class="text-gray-400 text-center">No interview history found.</p>';
+                } else {
+                    history.reverse().forEach((item, index) => {
+                        const div = document.createElement('div');
+                        div.className = "p-4 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition duration-150";
+                        div.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold text-white">${item.topic}</span>
+                                <span class="text-lg font-bold text-blue-400">${item.report.overallScore}</span>
+                            </div>
+                            <p class="text-sm text-gray-300">${item.domain}</p>
+                            <p class="text-xs text-gray-400 mt-1">${new Date(item.date).toLocaleString()}</p>
+                        `;
+                        div.onclick = () => displayHistoryReport(item);
+                        historyList.appendChild(div);
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load history:", e);
+                historyList.innerHTML = '<p class="text-red-400 text-center">Error loading history.</p>';
+            }
+            showScreen('history');
+        }
+
+        function exitInterview() {
+            if (isListening) recognition.stop();
+            stopSpeaking();
+            setStatus('', false);
+            transcriptPreview.textContent = '';
+            showScreen('topic');
+        }
+
+        function displayHistoryReport(item) {
+            const report = item.report;
+            document.getElementById('history-report-header').innerHTML = `
+                ${item.topic} (${item.domain})
+                <br>
+                <span class="text-sm text-gray-500">${new Date(item.date).toLocaleString()}</span>
+            `;
+            const container = historyReportScreen.querySelector('.space-y-6');
+            container.innerHTML = `
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase">Overall Score</h3>
+                    <p class="text-4xl font-bold text-blue-400">${report.overallScore}</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase">Summary</h3>
+                    <p class="text-white bg-gray-700 p-4 rounded-lg">${report.summary}</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase">Communication & Clarity</h3>
+                    <p class="text-white bg-gray-700 p-4 rounded-lg">${report.communication}</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase">Technical Knowledge</h3>
+                    <p class="text-white bg-gray-700 p-4 rounded-lg">${report.technicalSkill}</p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase">Areas for Improvement</h3>
+                    <ul class="list-disc list-inside bg-gray-700 p-4 rounded-lg space-y-1">
+                        ${report.areasForImprovement.map(li => `<li>${li}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            showScreen('historyReport');
+        }
+
+
+        // --- API Call Functions ---
+        async function callGeminiText(systemPrompt, history, generationConfig = {}) {
+            const payload = {
+                contents: history.length > 0 ? history : [{ role: 'user', parts: [{ text: "Start." }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: generationConfig
+            };
+            const response = await fetchWithRetry(textApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                return candidate.content.parts[0].text;
+            } else {
+                console.error("Invalid text response:", result);
+                throw new Error(result.error || "Invalid response structure from Text API");
+            }
+        }
+
+        async function callGeminiTTS(text) {
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+            const response = await fetchWithRetry(ttsApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            if (part && part.inlineData?.data && part.inlineData?.mimeType.startsWith("audio/")) {
+                return part.inlineData;
+            } else {
+                console.error("Invalid TTS response:", result);
+                throw new Error(result.error || "Invalid response structure from TTS API");
+            }
+        }
+        
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    let errorMsg = `API request failed with status ${response.status}`;
+                    try {
+                        const errorJson = await response.json();
+                        errorMsg = errorJson.error || errorMsg;
+                    } catch (e) { /* ignore */ }
+                    throw new Error(errorMsg);
+                } catch (error) {
+                    console.warn(`API call failed (attempt ${i + 1}/${retries}): ${error.message}`);
+                    if (i < retries - 1) {
+                        await new Promise(resolve => setTimeout(resolve,
+                         delay));
+                        delay *= 2;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+        }
+
+        // --- UI Helper Functions ---
+        function showScreen(screenName) {
+            if (currentScreen === screenName) return;
+            const oldScreen = screens[currentScreen];
+            const newScreen = screens[screenName];
+            currentScreen = screenName;
+            if (oldScreen) {
+                oldScreen.classList.add('opacity-0');
+                setTimeout(() => {
+                    oldScreen.classList.add('hidden');
+                }, 300);
+            }
+            if (newScreen) {
+                newScreen.classList.remove('hidden');
+                setTimeout(() => {
+                    newScreen.classList.remove('opacity-0');
+                }, 10);
+            }
+        }
+
+        function populateTopics() {
+            const selectedDomain = domainSelect.value;
+            topicSelect.innerHTML = '';
+            const topics = TOPICS_DB[selectedDomain] || [];
+            topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicSelect.appendChild(option);
+            });
+        }
+
+        function goHome() {
+            if (isListening) recognition.stop();
+            stopSpeaking();
+            setStatus('', false);
+            transcriptPreview.textContent = '';
+            showScreen('welcome');
+        }
+
+        function goToTopicSelection() {
+            if (isListening) recognition.stop();
+            stopSpeaking();
+            setStatus('', false);
+            transcriptPreview.textContent = '';
+            showScreen('topic');
+        }
+
+        function init() {
+            Object.keys(TOPICS_DB).forEach(domain => {
+                const option = document.createElement('option');
+                option.value = domain;
+                option.textContent = domain;
+                domainSelect.appendChild(option);
+            });
+            domainSelect.onchange = populateTopics;
+            populateTopics();
+            
+            welcomeNextBtn.onclick = setupMicTest;
+            startBtn.onclick = startInterview;
+            recordBtn.onclick = startRecording;
+            playBtn.onclick = playRecording;
+            micNextBtn.onclick = () => showScreen('topic');
+            micBackBtn.onclick = () => showScreen('welcome');
+            topicBackBtn.onclick = () => showScreen('micTest');
+            exitBtn.onclick = exitInterview;
+            endBtn.onclick = generateFinalReport;
+            restartBtn.onclick = () => {
+                stopSpeaking();
+                showScreen('topic');
+            };
+            historyBtn.onclick = showHistory;
+            historyBackBtn.onclick = () => showScreen('topic');
+            historyReportBackBtn.onclick = showHistory;
+            homeBtn.onclick = goHome;
+            newInterviewBtn.onclick = goToTopicSelection;
+            micWaves.style.display = 'none';
+            showScreen('welcome');
+        }
+
+        async function setupMicTest() {
+            setStatus('Getting permissions...', true);
+            try {
+                userAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                setupSpeechRecognition();
+                welcomePermissionError.classList.add('hidden');
+                showScreen('micTest');
+                setStatus('Ready for mic test', false);
+                recordBtn.disabled = false;
+                recordBtn.textContent = 'Record Voice (3s)';
+                playBtn.classList.add('hidden');
+                micNextBtn.classList.add('hidden');
+                if (recordedAudioUrl) {
+                    URL.revokeObjectURL(recordedAudioUrl);
+                    recordedAudioUrl = null;
+                }
+            } catch (err) {
+                console.error("Microphone permission denied:", err);
+                welcomePermissionError.classList.remove('hidden');
+                setStatus('', false);
+                showScreen('welcome');
+            }
+        }
+
+        async function startInterview() {
+            currentDomain = domainSelect.value;
+            currentTopic = topicSelect.value;
+            interviewHistory = [];
+            interviewData = [];
+            chatHistory.innerHTML = '';
+            questionDisplay.textContent = '...';
+            showScreen('interview');
+            setStatus('Thinking...', true);
+            
+            const starters = STARTER_QUESTIONS[currentTopic] || STARTER_QUESTIONS[currentDomain];
+            let firstQuestion = starters ? starters[Math.floor(Math.random() * starters.length)] : '';
+
+            try {
+                if (!firstQuestion) {
+                    const systemPrompt = `You are an AI interviewer. Start an interview for ${currentTopic}. Ask the very first, concise question. Do not add any preamble (like "Sure, let's start"). Just the question.`;
+                    firstQuestion = await callGeminiText(systemPrompt, []);
+                }
+                interviewHistory.push({ role: 'model', parts: [{ text: firstQuestion }] });
+                interviewData.push({ question: firstQuestion, answer: '' });
+                await speakText(firstQuestion);
+                questionDisplay.textContent = firstQuestion;
+                startListening();
+            } catch (error) {
+                console.error("Error starting interview:", error);
+                setStatus('Error', false);
+                questionDisplay.textContent = "Sorry, I couldn't start the interview. Please try again.";
+                await speakText("Sorry, I couldn't start the interview. Please try again.", false);
+                setTimeout(exitInterview, 3000);
+            }
+        }
+        
+        function addMessageToChat(role, text) {
+            if (role !== 'user') return;
+            const messageDiv = document.createElement('div');
+            const roleClass = 'bg-gray-600 text-white';
+            const alignment = 'ml-auto';
+            messageDiv.className = `p-3 rounded-lg max-w-xl ${roleClass} ${alignment} shadow-md`;
+            messageDiv.textContent = text;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        async function speakText(text, setStatusFlag = true) {
+            if (!text || text.trim() === "") {
+                console.warn("speakText called with empty string.");
+                isBotSpeaking = false;
+                setStatus('Ready', false);
+                return;
+            }
+            if (setStatusFlag) {
+                setStatus('Generating audio...', true);
+            }
+            try {
+                const audioData = await callGeminiTTS(text);
+                await playAudio(audioData.data, audioData.mimeType);
+            } catch (error) {
+                console.error("Failed to speak:", error);
+                isBotSpeaking = false;
+                setStatus('Error', false);
+            }
+        }
+        
+        function stopSpeaking() {
+            if (currentAudioPlayer) {
+                currentAudioPlayer.pause();
+                currentAudioPlayer = null;
+                isBotSpeaking = false;
+            }
+        }
+
+        function setStatus(text, showSpinner) {
+            if (showSpinner) {
+                statusEl.innerHTML = `<div class="dot-flashing"></div><span>${text}</span>`;
+            } else {
+                statusEl.innerHTML = `<span>${text}</span>`;
+            }
+        }
+        
+        // --- Initial Load ---
+        init();
+
+    </script>
+</body>
+</html>
